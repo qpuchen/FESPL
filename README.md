@@ -71,6 +71,7 @@ If you find our work helpful, please consider citing our paper:
   year={2026},
   publisher={Elsevier}
 }
+```
 
 ## Acknowledgements :gift:
 
