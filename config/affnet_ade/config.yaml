@@ -1,0 +1,120 @@
+taskname: '+ AFFNet DeepLabv3'
+common:
+  run_label: "train"
+  accum_freq: 1
+  accum_after_epoch: -1
+  log_freq: 200
+  auto_resume: true
+  mixed_precision: true
+  grad_clip: 10.0
+dataset:
+  root_train: "./datasets/ADEChallengeData2016/"
+  root_val: "./datasets/ADEChallengeData2016/"
+  name: "ade20k"
+  category: "segmentation"
+  train_batch_size0: 4 # effective batch size is 16 ( 4 * 4 GPUs)
+  val_batch_size0: 4
+  eval_batch_size0: 1
+  workers: 4
+  persistent_workers: false
+  pin_memory: false
+image_augmentation:
+  random_crop:
+    enable: true
+    seg_class_max_ratio: 0.75
+    pad_if_needed: true
+    mask_fill: 0 # background idx is 0
+  random_horizontal_flip:
+    enable: true
+  resize:
+    enable: true
+    size: [512, 512]
+    interpolation: "bicubic"
+  random_short_size_resize:
+    enable: true
+    interpolation: "bicubic"
+    short_side_min: 256
+    short_side_max: 768
+    max_img_dim: 1024
+  photo_metric_distort:
+    enable: true
+  random_rotate:
+    enable: true
+    angle: 10
+    mask_fill: 0 # background idx is 0
+  random_gaussian_noise:
+    enable: true
+sampler:
+  name: "batch_sampler"
+  bs:
+    crop_size_width: 512
+    crop_size_height: 512
+loss:
+  category: "segmentation"
+  ignore_idx: -1
+  segmentation:
+    name: "cross_entropy"
+    cross_entropy:
+      aux_weight: 0.4
+optim:
+  name: "adamw"
+  weight_decay: 0.05 #0.01
+  no_decay_bn_filter_bias: true
+  adamw:
+    beta1: 0.9
+    beta2: 0.999
+scheduler:
+  name: "cosine"
+  is_iteration_based: false
+  max_epochs: 120
+  warmup_iterations: 500
+  warmup_init_lr: 0.0000125
+  cosine:
+    max_lr: 0.000125
+    min_lr: 2.5e-7
+model:
+  segmentation:
+    name: "encoder_decoder"
+    lr_multiplier: 10
+    seg_head: "deeplabv3"
+    output_stride: 8
+    use_aux_head: true
+    activation:
+      name: "relu"
+    deeplabv3:
+      aspp_dropout: 0.1
+      aspp_out_channels: 256
+      aspp_rates: [ 6, 12, 18 ]
+  classification:
+    pretrained: "./config/affnet_ade/checkpoint_ema_best.pt"
+    name: "affnet"
+    classifier_dropout: 0.1
+    affnet:
+      mode: "small"
+      ffn_dropout: 0.0
+      attn_dropout: 0.0
+      dropout: 0.1
+      number_heads: 4
+      no_fuse_local_global_features: false
+      conv_kernel_size: 3
+      attn_norm_layer: "layer_norm_2d"
+    activation:
+      name: "swish"
+  normalization:
+    name: "sync_batch_norm"
+    momentum: 0.1
+  activation:
+    name: "swish"
+    sparsity_threshold: 0.0
+  layer:
+    global_pool: "mean"
+    conv_init: "kaiming_uniform"
+    linear_init: "normal"
+ema:
+  enable: true
+  momentum: 0.0005
+stats:
+  val: [ "loss", "iou" ]
+  train: [ "loss", "grad_norm" ]
+  checkpoint_metric: "iou"
+  checkpoint_metric_max: true
